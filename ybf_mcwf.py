@@ -1,19 +1,5 @@
 """
 YbF photon statistics: Monte-Carlo wavefunction (quantum-jump) simulation.
-
-
----------------
-Rate equations cannot represent coherent dark states. Some sidebands
-drive a type-II transition (F >= F'), so the real molecule is pumped into
-coherent superpositions that stop scattering. Rate equations 
-therefore overestimate the scattering rate. 
- 
-The Monte-Carlo wavefunction (MCWF) method gives a 56-dimensional wavefunction 
-which evolves under the non-Hermitian H_eff(t) = H(t) - (i/2) * P_excited, and 
-each quantum jump is a spontaneously emitted photon whose decay channel (FCF-weighted dipole)
-decides the vibrational branch. A validation check on a simplified system verifies if the 
-MCFW is equivalent to the OBE. 
- 
 --------------------
 - H(t) is built from pyLCP's own hamiltonian.return_full_H and each
   beam's electric field, so all conventions (dipole normalisation,
@@ -49,10 +35,10 @@ trapz = np.trapezoid if hasattr(np, 'trapezoid') else np.trapz
 
 RUN_RATEEQ = True          # deterministic rate-eq reference (upper bound)
 RUN_VALIDATION = True      # MCWF vs pylcp.obe cross-check (reduced system)
-N_MC = 1                # molecules in the MCWF ensemble
-DT = 0.004                 # RK4 step (units of 1/Gamma); halve to test convergence
+N_MC = 100                # molecules in the MCWF ensemble
+DT = 0.004                 # RK4 step (units of 1/Gamma)
 
-FILEPATH = "errorbars_2_09/"
+FILEPATH = ""
 
 # ---------------------------------------------
 # Unit system
@@ -60,8 +46,6 @@ tau = 28e-9
 gamma_MHz = 1/(2*np.pi*tau)/1e6
 Gamma = 1/tau
 #print(f"energy unit: Gamma/2pi = {gamma_MHz:.3f} MHz")
-
-#time_bin = 17.7e-3 # s
 
 w_p1 = 552e-9
 w_v1 = 568e-9
@@ -118,7 +102,6 @@ linewidth_p1_Hz = 754e3
 linewidth_v1_Hz = 541e3
 
 
-
 # --------------------------------------------------------------------
 # X^2Sigma+ (N=1, v=0..3) and A^2Pi_1/2 (v'=0, J'=1/2)
 H0_X, Bq_X, U_X, X_bases = {}, {}, {}, {}
@@ -148,7 +131,7 @@ H0_A, Bq_A, Abasis = pylcp.hamiltonians.XFmolecules.Astate(
     )
 
 # ------------------------------------------------
-# Q(1)
+# Q(1) (Not yet fully implemented)
 H0_N3, Bq_XN3, U_XN3, X_basesN3 = pylcp.hamiltonians.XFmolecules.Xstate(
     N=3, I=1/2, B=7233.8271, gamma=-13.41679,
     b=(170.26374-85.4208/3), 
@@ -232,7 +215,7 @@ def crossed_beam_s(s_max, wb, zc):
 # Beams propagate along +/-x, so both y-hat and z-hat are transverse.
 # z-hat drives pi transitions, y-hat drives (sigma+ + sigma-)/sqrt(2).
 # Rotate axes e1,2 = 1/\sqrt{2}(\hat{y} +- \hat{z})
-# E = cos(b) e1 + sin(b) e2 e^{i \phi(t)}, b = \pi / 4
+# E = cos(b) e1 + sin(b) e2 e^{i \phi(t)}, b = \pi / 4 + \beta
 POL_EOM = (np.array([0., 1., 1.])/np.sqrt(2.), 
            np.array([0., 1., -1.])/np.sqrt(2.))
 
@@ -848,7 +831,7 @@ def run(inp):
         # the addressed level UP by `shift` lowers the beam's delta by shift.
         deltas_p1 = (E_A_F1 - E_X0_hf[0]) - shifts_p1_MHz/gamma_MHz + det_p1
         # V1: one sideband per v=1 hyperfine level, on resonance (unchanged).
-        deltas_v1 = E_A_F1 - E_X1_hf + det_v1          # <-- v=1 energies, not v=0
+        deltas_v1 = E_A_F1 - E_X1_hf + det_v1
         assert len(deltas_v1) == 4, "hyperfine degeneracy split"
         assert len(deltas_p1) == len(frac_p1) == len(shifts_p1_MHz)
 
@@ -1118,12 +1101,12 @@ def run(inp):
 
 def main():
     N_WORKERS = 1
-    P_v1_values = [0]
-    tb_values = [22.32]
-    Om = [120]
-    B_s = [0.2]
-    det_mw = [0]
-    seed = [1]
+    P_v1_values = [0] # V1 Power
+    tb_values = [22.32] # Time bin (ms)
+    Om = [120] # MW Rabi frequency (kHz)
+    B_s = [0.2] # Background mag. field (G)
+    det_mw = [0] # MW detunining (kHz)
+    seed = [1] # Random Seed
 
     combs = list(product(tb_values, P_v1_values, Om, B_s, det_mw, seed))
     print(combs)
